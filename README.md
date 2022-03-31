@@ -1,2 +1,1 @@
-# SML_RUL
-Aircraft turbo engine RUL Prediction
+# SML: Aircraft Turbo Engine RUL(Lifespan) Prediction
