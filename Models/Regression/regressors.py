@@ -1,5 +1,3 @@
-import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -7,19 +5,18 @@ import tensorflow as tf
 import xgboost
 from pylab import rcParams
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from pathlib import Path
 
 from Preprocessing.pre_processing import RUL
 from Preprocessing.pre_processing import test_data
 from Preprocessing.pre_processing import training_data
-
-from sklearn.feature_selection import SelectKBest, chi2
-
 
 
 def train_models(dataset, cols, model_type='FOREST'):
@@ -32,27 +29,11 @@ def train_models(dataset, cols, model_type='FOREST'):
         model.fit(X, Y)
         return model
     elif model_type == 'XGB':
-        k = 10
-        kf = KFold(n_splits=k, random_state=None)
         model = xgboost.XGBRegressor(n_estimators=110, learning_rate=0.015, subsample=0.6,
                                      colsample_bytree=0.9, max_depth=5, max_leaves=7, max_bin=1023,
                                      booster="gbtree")
-        acc_score = []
-        for train_index, test_index in kf.split(X):
-            X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
-            y_train, y_test = Y[train_index], Y[test_index]
-
-            model.fit(X_train, y_train)
-            pred_values = model.predict(X_test)
-            # acc = accuracy_score(pred_values, y_test)
-            rmse = round(mean_squared_error(y_test, pred_values), 2) ** 0.5
-            acc_score.append(rmse)
-        avg_acc_score = sum(acc_score) / k
-        print('accuracy of each fold - {}'.format(acc_score))
-        print('Avg accuracy : {}'.format(avg_acc_score))
-
-        # model.fit(X, Y)
-        # return model
+        model.fit(X, Y)
+        return model
     elif model_type == 'LR':
         model = LinearRegression()
         model.fit(X, Y)
@@ -98,16 +79,16 @@ test_df = test_df.to_numpy()
 
 y_true = RUL[0].to_numpy()
 
-
 bestfeatures = SelectKBest(score_func=chi2, k=10)
 X = train_df.iloc[:, :14]
 fit = bestfeatures.fit(X.to_numpy(), train_df.iloc[:, 14:].to_numpy())
 dfscores = pd.DataFrame(fit.scores_)
 dfcolumns = pd.DataFrame(X.columns)
-#concat two dataframes for better visualization
-featureScores = pd.concat([dfcolumns,dfscores],axis=1)
-featureScores.columns = ['Specs','Score'] #naming the dataframe columns
-print(featureScores.nlargest(10,'Score'))
+# concat two dataframes for better visualization
+featureScores = pd.concat([dfcolumns, dfscores], axis=1)
+featureScores.columns = ['Specs', 'Score']  # naming the dataframe columns
+print(featureScores.nlargest(10, 'Score'))
+
 
 def test_model(train_data, test_dataset, y_true, cols, model):
     model_1 = train_models(train_data, cols, model)
@@ -121,12 +102,12 @@ def test_model(train_data, test_dataset, y_true, cols, model):
 for algo in ['LR', 'XGB', 'FOREST']:
     test_model(train_df, test_df, y_true, sel_cols, algo)
 
-sys.exit()
+PROJECT_ROOT = Path(__file__).parents[2]
 
 columns_to_be_dropped = [0, 1, 2, 3, 4]
-train_data = pd.read_csv("../../CMAPSSData/train_FD001.txt", sep="\s+", header=None)
-test_data = pd.read_csv("../../CMAPSSData/test_FD001.txt", sep="\s+", header=None)
-true_rul = pd.read_csv("../../CMAPSSData/RUL_FD001.txt", sep='\s+', header=None)
+train_data = pd.read_csv(PROJECT_ROOT / "CMAPSSData/train_FD001.txt", sep="\s+", header=None)
+test_data = pd.read_csv(PROJECT_ROOT / "CMAPSSData/test_FD001.txt", sep="\s+", header=None)
+true_rul = pd.read_csv(PROJECT_ROOT/ "CMAPSSData/RUL_FD001.txt", sep='\s+', header=None)
 
 window_length = 15
 shift = 1
