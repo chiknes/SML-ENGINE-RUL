@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import MinMaxScaler
 
 from Preprocessing.pre_processing import RUL
@@ -19,6 +19,7 @@ from Preprocessing.pre_processing import test_data
 from Preprocessing.pre_processing import training_data
 
 from sklearn.feature_selection import SelectKBest, chi2
+
 
 
 def train_models(dataset, cols, model_type='FOREST'):
@@ -31,11 +32,27 @@ def train_models(dataset, cols, model_type='FOREST'):
         model.fit(X, Y)
         return model
     elif model_type == 'XGB':
+        k = 10
+        kf = KFold(n_splits=k, random_state=None)
         model = xgboost.XGBRegressor(n_estimators=110, learning_rate=0.015, subsample=0.6,
                                      colsample_bytree=0.9, max_depth=5, max_leaves=7, max_bin=1023,
                                      booster="gbtree")
-        model.fit(X, Y)
-        return model
+        acc_score = []
+        for train_index, test_index in kf.split(X):
+            X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            model.fit(X_train, y_train)
+            pred_values = model.predict(X_test)
+            # acc = accuracy_score(pred_values, y_test)
+            rmse = round(mean_squared_error(y_test, pred_values), 2) ** 0.5
+            acc_score.append(rmse)
+        avg_acc_score = sum(acc_score) / k
+        print('accuracy of each fold - {}'.format(acc_score))
+        print('Avg accuracy : {}'.format(avg_acc_score))
+
+        # model.fit(X, Y)
+        # return model
     elif model_type == 'LR':
         model = LinearRegression()
         model.fit(X, Y)
@@ -103,6 +120,8 @@ def test_model(train_data, test_dataset, y_true, cols, model):
 # test_model(train_df, test_df, y_true, sel_cols, "XGB")
 for algo in ['LR', 'XGB', 'FOREST']:
     test_model(train_df, test_df, y_true, sel_cols, algo)
+
+sys.exit()
 
 columns_to_be_dropped = [0, 1, 2, 3, 4]
 train_data = pd.read_csv("../../CMAPSSData/train_FD001.txt", sep="\s+", header=None)
