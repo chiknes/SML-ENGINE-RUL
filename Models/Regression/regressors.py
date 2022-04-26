@@ -1,3 +1,14 @@
+"""
+
+Usage:
+    ./regressors.py
+
+Authors:
+    Shailesh, Rishabh 04-26-22
+"""
+
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,20 +16,19 @@ import tensorflow as tf
 import xgboost
 from pylab import rcParams
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from pathlib import Path
 
 from Preprocessing.pre_processing import RUL
 from Preprocessing.pre_processing import test_data
 from Preprocessing.pre_processing import training_data
 
 
+# Linear Regression, Random Forest, XGBoost - Model Training
 def train_models(dataset, cols, model_type='FOREST'):
     print("\n", model_type)
     X = dataset.iloc[:, :14].to_numpy()
@@ -60,9 +70,11 @@ def score_func(y_true, y_pred):
     return
 
 
+# Drop unwanted columns
 training_data.drop(columns=['Nf_dmd', 'PCNfR_dmd', 'P2', 'T2', 'TRA', 'farB', 'epr'], inplace=True)
 train_df = training_data.drop(columns=['unit_number', 'setting_1', 'setting_2', 'P15', 'NRc'])
-# print(train_df.shape)
+
+# Keep select columns
 sel_cols = [1, 6, 7, 8, 11, 12, 13, 15, 16, 17, 19, 21, 22, 25]
 
 test_max = test_data.groupby('unit_number')['time_in_cycles'].max().reset_index()
@@ -71,43 +83,32 @@ test_data = test_data.merge(test_max, on=['unit_number'], how='left')
 test_data.drop(columns=['Nf_dmd', 'PCNfR_dmd', 'P2', 'T2', 'TRA', 'farB', 'epr'], inplace=True)
 
 test_df = test_data[test_data['time_in_cycles'] == test_data['max']].reset_index()
-# test_data = test_data.iloc[:, sel_cols]
+
 test_df.drop(columns=['index', 'max', 'unit_number', 'setting_1', 'setting_2', 'P15', 'NRc'],
              inplace=True)
-# print(test_data.shape)
+
 test_df = test_df.to_numpy()
-
 y_true = RUL[0].to_numpy()
-
-bestfeatures = SelectKBest(score_func=chi2, k=10)
-X = train_df.iloc[:, :14]
-fit = bestfeatures.fit(X.to_numpy(), train_df.iloc[:, 14:].to_numpy())
-dfscores = pd.DataFrame(fit.scores_)
-dfcolumns = pd.DataFrame(X.columns)
-# concat two dataframes for better visualization
-featureScores = pd.concat([dfcolumns, dfscores], axis=1)
-featureScores.columns = ['Specs', 'Score']  # naming the dataframe columns
-print(featureScores.nlargest(10, 'Score'))
 
 
 def test_model(train_data, test_dataset, y_true, cols, model):
     model_1 = train_models(train_data, cols, model)
     y_pred = model_1.predict(test_dataset)
     score_func(y_true, y_pred)
-    # plot_result(y_true, y_pred)
+    plot_result(y_true, y_pred)
 
 
-# test_model(train_df, test_df, y_true, sel_cols, "FOREST")
-# test_model(train_df, test_df, y_true, sel_cols, "XGB")
 for algo in ['LR', 'XGB', 'FOREST']:
     test_model(train_df, test_df, y_true, sel_cols, algo)
 
+
+# CNN - Model Training
 PROJECT_ROOT = Path(__file__).parents[2]
 
 columns_to_be_dropped = [0, 1, 2, 3, 4]
 train_data = pd.read_csv(PROJECT_ROOT / "CMAPSSData/train_FD001.txt", sep="\s+", header=None)
 test_data = pd.read_csv(PROJECT_ROOT / "CMAPSSData/test_FD001.txt", sep="\s+", header=None)
-true_rul = pd.read_csv(PROJECT_ROOT/ "CMAPSSData/RUL_FD001.txt", sep='\s+', header=None)
+true_rul = pd.read_csv(PROJECT_ROOT / "CMAPSSData/RUL_FD001.txt", sep='\s+', header=None)
 
 window_length = 15
 shift = 1
@@ -138,11 +139,7 @@ num_test_machines = len(test_data[0].unique())
 
 
 def process_targets(data_length, early_rul=None):
-    """
-    Takes datalength and earlyrul as input and
-    creates target rul.
-    """
-    if early_rul == None:
+    if early_rul is None:
         return np.arange(data_length - 1, -1, -1)
     else:
         early_rul_duration = data_length - early_rul
@@ -153,14 +150,12 @@ def process_targets(data_length, early_rul=None):
 
 
 def process_input_data_with_targets(input_data, target_data=None, window_length=1, shift=1):
-    """Depending on values of window_length and shift, this function generates batchs of data and targets
-    from input_data and target_data.
-
+    """
     Number of batches = np.floor((len(input_data) - window_length)/shift) + 1
 
-    **We don't check input dimensions uisng exception handling. So readers should be careful while using these
+    *We don't check input dimensions uisng exception handling. So readers should be careful while using these
     functions. If input data are not of desired dimension, either error occurs or something undesirable is
-    produced as output.**
+    produced as output.*
 
     Arguments:
         input_data: input data to function (Must be 2 dimensional)
@@ -189,12 +184,7 @@ def process_input_data_with_targets(input_data, target_data=None, window_length=
 
 
 def process_test_data(test_data_for_an_engine, window_length, shift, num_test_windows=1):
-    """ This function takes test data for an engine as first input. The next two inputs
-    window_length and shift are same as other functins.
-
-    Finally it takes num_test_windows as the last input. num_test_windows sets how many examplles we
-    want from test data (from last). By default it extracts only the last example.
-
+    """
     The function return last examples and number of last examples (a scaler) as output.
     We need the second output later. If we are extracting more than 1 last examples, we have to
     average their prediction results. The second scaler halps us do just that.
@@ -213,9 +203,6 @@ def process_test_data(test_data_for_an_engine, window_length, shift, num_test_wi
                                                                           window_length=window_length, shift=shift)
         return batched_test_data_for_an_engine, num_test_windows
 
-
-# Process training and test data sepeartely as number of engines in training and test set may be different.
-# As we are doing scaling for full dataset, we are not bothered by different number of engines in training and test set.
 
 # Process trianing data
 for i in np.arange(1, num_train_machines + 1):
@@ -243,7 +230,7 @@ for i in np.arange(1, num_test_machines + 1):
     temp_test_data = test_data[test_data[0] == i].drop(columns=[0]).values
 
     # Verify if data of given window length can be extracted from test data
-    if (len(temp_test_data) < window_length):
+    if len(temp_test_data) < window_length:
         print("Test engine {} doesn't have enough data for window_length of {}".format(i, window_length))
         raise AssertionError("Window length is larger than number of data points for some engines. "
                              "Try decreasing window length.")
@@ -262,7 +249,7 @@ true_rul = true_rul[0].values
 index = np.random.permutation(len(processed_train_targets))
 processed_train_data, processed_train_targets = processed_train_data[index], processed_train_targets[index]
 
-print("Processed trianing data shape: ", processed_train_data.shape)
+print("Processed training data shape: ", processed_train_data.shape)
 print("Processed training ruls shape: ", processed_train_targets.shape)
 print("Processed test data shape: ", processed_test_data.shape)
 print("True RUL shape: ", true_rul.shape)
@@ -315,8 +302,9 @@ rul_pred = target_scaler.inverse_transform(rul_pred_scaled.reshape(-1, 1)).resha
 preds_for_each_engine = np.split(rul_pred, np.cumsum(num_test_windows_list)[:-1])
 mean_pred_for_each_engine = [np.average(ruls_for_each_engine, weights=np.repeat(1 / num_windows, num_windows))
                              for ruls_for_each_engine, num_windows in zip(preds_for_each_engine, num_test_windows_list)]
-RMSE = np.sqrt(mean_squared_error(true_rul, mean_pred_for_each_engine))
-print("RMSE: ", RMSE)
+#RMSE = np.sqrt(mean_squared_error(true_rul, mean_pred_for_each_engine))
+
+# Print the performance parameters
 print(f' mean absolute error {round(mean_absolute_error(y_true, mean_pred_for_each_engine), 2)}')
 print(f' root mean squared error {round(mean_squared_error(y_true, mean_pred_for_each_engine), 2) ** 0.5}')
 print(f' R2 score {round(r2_score(y_true, mean_pred_for_each_engine), 2)}')

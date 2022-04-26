@@ -1,3 +1,12 @@
+"""
+
+Usage:
+    ./classifiers.py
+
+Authors:
+    Shailesh, Rishabh 04-26-22
+"""
+
 import numpy as np
 from imblearn.over_sampling import RandomOverSampler
 from matplotlib import pyplot as plt
@@ -9,6 +18,7 @@ import seaborn as sns
 from Preprocessing.pre_processing import test_data
 from Preprocessing.pre_processing import training_data
 
+# Add a new column 'label' for classification : 0-> GREEN ZONE , 1-> RED ZONE
 TTF = 10
 training_data['label'] = np.where(training_data['RUL'] <= TTF, 1, 0)
 
