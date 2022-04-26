@@ -317,3 +317,6 @@ mean_pred_for_each_engine = [np.average(ruls_for_each_engine, weights=np.repeat(
                              for ruls_for_each_engine, num_windows in zip(preds_for_each_engine, num_test_windows_list)]
 RMSE = np.sqrt(mean_squared_error(true_rul, mean_pred_for_each_engine))
 print("RMSE: ", RMSE)
+print(f' mean absolute error {round(mean_absolute_error(y_true, mean_pred_for_each_engine), 2)}')
+print(f' root mean squared error {round(mean_squared_error(y_true, mean_pred_for_each_engine), 2) ** 0.5}')
+print(f' R2 score {round(r2_score(y_true, mean_pred_for_each_engine), 2)}')
