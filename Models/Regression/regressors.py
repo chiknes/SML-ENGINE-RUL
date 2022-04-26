@@ -62,18 +62,6 @@ def score_func(y_true, y_pred):
     return
 
 
-# X_train = training_data.iloc[:, 0:26]
-# y_train = training_data['RUL']
-# lm = LinearRegression()
-# rfe = RFE(lm)  # running RFE
-# rfe = rfe.fit(X_train, y_train)
-# print(rfe.ranking_)
-
-# sel_cols = []
-# for i in range(0, 26):
-#     if rfe.ranking_[i] <= 3:
-#         sel_cols.append(i)
-# print(sel_cols)
 training_data.drop(columns=['Nf_dmd', 'PCNfR_dmd', 'P2', 'T2', 'TRA', 'farB', 'epr'], inplace=True)
 train_df = training_data.drop(columns=['unit_number', 'setting_1', 'setting_2', 'P15', 'NRc'])
 # print(train_df.shape)
